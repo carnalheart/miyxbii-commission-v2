@@ -18,7 +18,7 @@ const client = new Client({
 client.commands = new Collection();
 const commands = [];
 
-// Load commands
+// Load slash commands
 const commandsPath = path.join(__dirname, 'commands');
 const commandFiles = fs.existsSync(commandsPath)
   ? fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'))
@@ -30,6 +30,7 @@ for (const file of commandFiles) {
   if ('data' in command && 'execute' in command) {
     client.commands.set(command.data.name, command);
     commands.push(command.data.toJSON());
+    console.log(`Loaded slash command: ${command.data.name}`);
   } else {
     console.log(`[WARNING] Command at ${filePath} is missing "data" or "execute".`);
   }
@@ -45,7 +46,7 @@ mongoose.connect(process.env.MONGODB_URI, {
   console.error('MongoDB connection error:', err);
 });
 
-// Bot ready
+// When bot is ready, register slash commands
 client.once('ready', async () => {
   console.log(`Logged in as ${client.user.tag}`);
 
@@ -53,17 +54,19 @@ client.once('ready', async () => {
 
   try {
     console.log('Registering slash commands (guild)...');
+
     await rest.put(
       Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID),
       { body: commands }
     );
+
     console.log('Slash commands registered successfully!');
   } catch (err) {
     console.error('Failed to register slash commands:', err);
   }
 });
 
-// Handle slash command interactions
+// Respond to slash commands
 client.on('interactionCreate', async interaction => {
   if (!interaction.isChatInputCommand()) return;
 
@@ -74,7 +77,10 @@ client.on('interactionCreate', async interaction => {
     await command.execute(interaction);
   } catch (error) {
     console.error(error);
-    await interaction.reply({ content: 'There was an error executing that command.', ephemeral: true });
+    await interaction.reply({
+      content: 'There was an error executing that command.',
+      ephemeral: true
+    });
   }
 });
 
