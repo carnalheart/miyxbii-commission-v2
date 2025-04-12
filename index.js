@@ -46,9 +46,13 @@ mongoose.connect(process.env.MONGODB_URI, {
   console.error('MongoDB connection error:', err);
 });
 
-// When bot is ready, register slash commands
+// Register slash commands when bot is ready
 client.once('ready', async () => {
   console.log(`Logged in as ${client.user.tag}`);
+
+  // DEBUG: Confirm .env values are loaded
+  console.log(`CLIENT_ID: ${process.env.CLIENT_ID}`);
+  console.log(`GUILD_ID: ${process.env.GUILD_ID}`);
 
   const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
 
@@ -66,7 +70,7 @@ client.once('ready', async () => {
   }
 });
 
-// Respond to slash commands
+// Handle slash command execution
 client.on('interactionCreate', async interaction => {
   if (!interaction.isChatInputCommand()) return;
 
