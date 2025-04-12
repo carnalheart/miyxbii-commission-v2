@@ -1,13 +1,10 @@
-require('./keepAlive.js');
 require('dotenv').config();
-const { Client, GatewayIntentBits, Collection } = require('discord.js');
+const { Client, GatewayIntentBits, Collection, REST, Routes } = require('discord.js');
 const mongoose = require('mongoose');
 const fs = require('fs');
 const path = require('path');
-
-// DEBUG: Confirm .env is being read correctly
-console.log('MONGODB_URI:', process.env.MONGODB_URI);
-console.log('TOKEN is present:', !!process.env.TOKEN);
+const config = require('./config.json');
+require('./keepAlive.js');
 
 const client = new Client({
   intents: [
@@ -17,6 +14,26 @@ const client = new Client({
     GatewayIntentBits.GuildMembers
   ]
 });
+
+client.commands = new Collection();
+const commands = [];
+
+// Load commands
+const commandsPath = path.join(__dirname, 'commands');
+const commandFiles = fs.existsSync(commandsPath)
+  ? fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'))
+  : [];
+
+for (const file of commandFiles) {
+  const filePath = path.join(commandsPath, file);
+  const command = require(filePath);
+  if ('data' in command && 'execute' in command) {
+    client.commands.set(command.data.name, command);
+    commands.push(command.data.toJSON());
+  } else {
+    console.log(`[WARNING] Command at ${filePath} is missing "data" or "execute".`);
+  }
+}
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGODB_URI, {
@@ -28,46 +45,37 @@ mongoose.connect(process.env.MONGODB_URI, {
   console.error('MongoDB connection error:', err);
 });
 
-client.commands = new Collection();
-
-// Load all commands from /commands
-const commandsPath = path.join(__dirname, 'commands');
-const commandFiles = fs.existsSync(commandsPath)
-  ? fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'))
-  : [];
-
-for (const file of commandFiles) {
-  const filePath = path.join(commandsPath, file);
-  const command = require(filePath);
-  if ('name' in command && 'execute' in command) {
-    client.commands.set(command.name, command);
-  } else {
-    console.log(`[WARNING] Command at ${filePath} is missing "name" or "execute".`);
-  }
-}
-
-// Log when the bot is ready
-client.once('ready', () => {
+// Bot ready
+client.once('ready', async () => {
   console.log(`Logged in as ${client.user.tag}`);
+
+  const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
+
+  try {
+    console.log('Registering slash commands (guild)...');
+    await rest.put(
+      Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID),
+      { body: commands }
+    );
+    console.log('Slash commands registered successfully!');
+  } catch (err) {
+    console.error('Failed to register slash commands:', err);
+  }
 });
 
-// Listen for commands
-client.on('messageCreate', async message => {
-  if (!message.content.startsWith('.') || message.author.bot) return;
+// Handle slash command interactions
+client.on('interactionCreate', async interaction => {
+  if (!interaction.isChatInputCommand()) return;
 
-  const args = message.content.slice(1).trim().split(/ +/);
-  const commandName = args.shift().toLowerCase();
-  const command = client.commands.get(commandName);
-
+  const command = client.commands.get(interaction.commandName);
   if (!command) return;
 
   try {
-    await command.execute(message, args);
+    await command.execute(interaction);
   } catch (error) {
     console.error(error);
-    message.reply('There was an error executing that command.');
+    await interaction.reply({ content: 'There was an error executing that command.', ephemeral: true });
   }
 });
 
-// Log in
 client.login(process.env.TOKEN);
