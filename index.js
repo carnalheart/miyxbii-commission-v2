@@ -1,9 +1,3 @@
-console.log("ENV DEBUG:");
-console.log("TOKEN:", !!process.env.TOKEN);
-console.log("MONGODB_URI:", !!process.env.MONGODB_URI);
-console.log("CLIENT_ID:", process.env.CLIENT_ID);
-console.log("GUILD_ID:", process.env.GUILD_ID);
-//require('dotenv').config();
 const { Client, GatewayIntentBits, Collection, REST, Routes } = require('discord.js');
 const mongoose = require('mongoose');
 const fs = require('fs');
@@ -11,6 +5,14 @@ const path = require('path');
 const config = require('./config.json');
 require('./keepAlive.js');
 
+// === ENV DEBUG CHECK ===
+console.log("DEBUG: ENV values at startup:");
+console.log("TOKEN:", process.env.TOKEN ? "Loaded" : "Missing");
+console.log("MONGODB_URI:", process.env.MONGODB_URI ? "Loaded" : "Missing");
+console.log("CLIENT_ID:", process.env.CLIENT_ID || "MISSING");
+console.log("GUILD_ID:", process.env.GUILD_ID || "MISSING");
+
+// === BOT INIT ===
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -23,7 +25,7 @@ const client = new Client({
 client.commands = new Collection();
 const commands = [];
 
-// Load slash commands
+// === Load Slash Commands ===
 const commandsPath = path.join(__dirname, 'commands');
 const commandFiles = fs.existsSync(commandsPath)
   ? fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'))
@@ -41,7 +43,7 @@ for (const file of commandFiles) {
   }
 }
 
-// Connect to MongoDB
+// === Connect to MongoDB ===
 mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true
@@ -51,31 +53,25 @@ mongoose.connect(process.env.MONGODB_URI, {
   console.error('MongoDB connection error:', err);
 });
 
-// Register slash commands when bot is ready
+// === Bot Ready ===
 client.once('ready', async () => {
   console.log(`Logged in as ${client.user.tag}`);
-
-  // DEBUG: Confirm .env values are loaded
-  console.log(`CLIENT_ID: ${process.env.CLIENT_ID}`);
-  console.log(`GUILD_ID: ${process.env.GUILD_ID}`);
 
   const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
 
   try {
     console.log('Registering slash commands (guild)...');
-
     await rest.put(
       Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID),
       { body: commands }
     );
-
     console.log('Slash commands registered successfully!');
   } catch (err) {
     console.error('Failed to register slash commands:', err);
   }
 });
 
-// Handle slash command execution
+// === Handle Slash Commands ===
 client.on('interactionCreate', async interaction => {
   if (!interaction.isChatInputCommand()) return;
 
@@ -93,4 +89,5 @@ client.on('interactionCreate', async interaction => {
   }
 });
 
+// === Log in ===
 client.login(process.env.TOKEN);
