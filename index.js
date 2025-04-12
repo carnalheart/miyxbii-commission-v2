@@ -3,7 +3,7 @@ console.log("TOKEN:", !!process.env.TOKEN);
 console.log("MONGODB_URI:", !!process.env.MONGODB_URI);
 console.log("CLIENT_ID:", process.env.CLIENT_ID);
 console.log("GUILD_ID:", process.env.GUILD_ID);
-require('dotenv').config();
+//require('dotenv').config();
 const { Client, GatewayIntentBits, Collection, REST, Routes } = require('discord.js');
 const mongoose = require('mongoose');
 const fs = require('fs');
