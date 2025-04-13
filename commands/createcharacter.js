@@ -47,6 +47,7 @@ module.exports = {
     };
 
     // Check if character already exists
+    //edits
     const existing = await Character.findOne({ name });
     if (existing) {
       return interaction.reply({ content: "A character with that name already exists.", ephemeral: true });
