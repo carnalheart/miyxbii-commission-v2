@@ -3,7 +3,7 @@ const Character = require("../models/character");
 
 module.exports = {
   data: new SlashCommandBuilder()
-    .setName("createcharacter")
+    .setName("createchar")
     .setDescription("Create a new Warrior Cats character.")
     .addStringOption(option =>
       option.setName("name")
