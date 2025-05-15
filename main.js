@@ -25,6 +25,7 @@ const client = new Client({
 client.commands = new Collection();
 const commands = [];
 
+// Load slash commands
 const commandsPath = path.join(__dirname, 'commands');
 const commandFiles = fs.existsSync(commandsPath)
   ? fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'))
@@ -39,6 +40,23 @@ for (const file of commandFiles) {
     console.log(`Loaded slash command: ${command.data.name}`);
   } else {
     console.log(`[WARNING] Command at ${filePath} is missing "data" or "execute".`);
+  }
+}
+
+// Load events
+const eventsPath = path.join(__dirname, 'events');
+const eventFiles = fs.existsSync(eventsPath)
+  ? fs.readdirSync(eventsPath).filter(file => file.endsWith('.js'))
+  : [];
+
+for (const file of eventFiles) {
+  const filePath = path.join(eventsPath, file);
+  const event = require(filePath);
+
+  if (event.once) {
+    client.once(event.name, (...args) => event.execute(...args));
+  } else {
+    client.on(event.name, (...args) => event.execute(...args));
   }
 }
 
@@ -77,24 +95,6 @@ client.once('ready', async () => {
     console.log('All slash commands registered successfully!');
   } catch (err) {
     console.error('Failed to register slash commands:', err);
-  }
-});
-
-// Slash Command Handling
-client.on('interactionCreate', async interaction => {
-  if (!interaction.isChatInputCommand()) return;
-
-  const command = client.commands.get(interaction.commandName);
-  if (!command) return;
-
-  try {
-    await command.execute(interaction);
-  } catch (error) {
-    console.error(error);
-    await interaction.reply({
-      content: 'There was an error executing that command.',
-      ephemeral: true
-    });
   }
 });
 
